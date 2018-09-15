@@ -54,7 +54,7 @@ gl.setSize = function(w,h){
 var currentsubject = 0;
 function getSubList() {
   var dirRequest = new XMLHttpRequest();
-  dirRequest.open("GET", "/shape/subjects", true);
+  dirRequest.open("GET", "/subjects", true);
   dirRequest.onreadystatechange = function() {
     if (dirRequest.readyState == 4 && dirRequest.status == 200){
       var subjects = dirRequest.responseText;
@@ -67,9 +67,7 @@ function getSubList() {
         subrow.style.textShadow = 'none';
         if (currentsubject == i) {subrow.style.color = 'cyan'; subrow.style.textShadow = '0px 0px 7px aqua, 0px 0px 3px aqua'; }
         var subdiv = document.createElement('td');
-        var subname = subList[i];
-        //var subname = subList[i].slice(0,subList[i].length-1).split('/').pop();
-        subdiv.appendChild(document.createTextNode(subname));
+        subdiv.appendChild(document.createTextNode(subList[i]));
         subdiv.id = i;
         subdiv.onclick = function(){ currentsubject=this.id; loadnewsubject(this.id); getSubList(); }
         subrow.appendChild(subdiv);
@@ -82,7 +80,7 @@ function getSubList() {
 
 function selectDir(dirName) {
   var dirRequest = new XMLHttpRequest();
-  var sendurl = `/shape/change?newdir=${encodeURIComponent(dirName)}`
+  var sendurl = `/change?newdir=${encodeURIComponent(dirName)}`
   dirRequest.open("POST",sendurl, true);
   dirRequest.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
   dirRequest.onreadystatechange = function() {
@@ -90,6 +88,8 @@ function selectDir(dirName) {
       var subjects = dirRequest.responseText;
       //document.getElementById("fps").innerHTML = subjects;
       getSubList();
+      currentsubject = 0;
+      loadnewsubject(0);
     }
   }
   dirRequest.send(`finder=${dirName}`);
@@ -109,7 +109,7 @@ var basecolor_loc = gl.getUniformLocation(program, "u_basecolor");
 var viewworldpos_loc = gl.getUniformLocation(program, "u_viewworldpos");
 var light_loc = gl.getUniformLocation(program, "u_litdirection");
 var normtype_loc = gl.getUniformLocation(program, "u_normtype");
-var filePath =  "/shape/mesh/";
+var filePath =  "/mesh/";
 models = []; 
 readyCount = 0; //14 total
 center = {};
@@ -168,7 +168,16 @@ function colorall(models){
 }
 document.getElementById("searchbut").onclick = ()=>{ selectDir(document.getElementById("dirsearch").value); };
 document.getElementById("cbut").onclick = ()=>{ colorall(models); };
-document.getElementById("nbut").onclick = ()=>{ ntype = (ntype > 0.5 ? 0.0 : 1.0); };
+nbut = document.getElementById("nbut");
+nbut.onclick = ()=>{ 
+  if (ntype > 0.5){
+    ntype = 0.0;
+    nbut.innerHTML = "chunky";
+  } else {
+    ntype = 1.0;
+    nbut.innerHTML = "smooth";
+  }
+}
 
 
 //mouse and touchscreen moving
@@ -186,10 +195,11 @@ function dropper(e){
   document.removeEventListener("mousemove",mover);
   document.removeEventListener("touchend",dropper);
   document.removeEventListener("touchmove",mover);
-  //document.removeEventListener("touchmove",zoomer);
+  document.removeEventListener("touchmove",zoomer);
 }
 
 function grabber(e){
+  e.preventDefault();
   oldx = e.clientX || e.targetTouches[0].clientX;
   oldy = e.clientY || e.targetTouches[0].clientY;
   document.addEventListener("mousemove",mover);
@@ -197,8 +207,8 @@ function grabber(e){
   document.addEventListener("touchmove",mover);
   document.addEventListener("touchend",dropper);
 }
-/*
 function zoomgrab(e){
+  e.preventDefault();
   if (e.targetTouches[1]){
     otx1 = e.targetTouches[0].clientX;
     oty1 = e.targetTouches[0].clientY;
@@ -215,14 +225,16 @@ function zoomer(e){
   tx2 = e.targetTouches[1].clientX;
   ty2 = e.targetTouches[1].clientY;
   dist = Math.sqrt((tx1-tx2)*(tx1-tx2)+(ty1-ty2)*(ty1-ty2));
-  console.log(dist - odist);
-  moves.t.z -= (dist - odist);
+  moves.t.z -= 0.2*(dist - odist);
   odist = dist;
 }
-*/
+function scrollzoom(e){
+  moves.t.z -= (e.wheelDelta || -e.detail)/50;
+}
+canvas.addEventListener("mousewheel",scrollzoom);
 canvas.addEventListener("mousedown",grabber);
 canvas.addEventListener("touchstart",grabber);
-//canvas.addEventListener("touchstart",zoomgrab);
+canvas.addEventListener("touchstart",zoomgrab);
 
 
 
@@ -527,7 +539,7 @@ function whenLoaded(num){
 
 function loadMeshFile(fileName,subjectidx=0) {
   var meshRequest = new XMLHttpRequest();
-  meshRequest.open("GET", `/shape/mesh/${subjectidx}/${fileName}?_=${new Date().getTime()}`, true);
+  meshRequest.open("GET", `/mesh/${subjectidx}/${fileName}?_=${new Date().getTime()}`, true);
   //meshRequest.open("GET",fileName, true);
   meshRequest.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
   meshRequest.onreadystatechange = function() {
